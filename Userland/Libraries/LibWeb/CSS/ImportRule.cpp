@@ -1,5 +1,4 @@
 /*
- * Copyright (c) 2018-2020, Andreas Kling <kling@serenityos.org>
  * Copyright (c) 2021, the SerenityOS developers.
  * All rights reserved.
  *
@@ -25,51 +24,19 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <AK/ByteBuffer.h>
 #include <AK/URL.h>
 #include <LibWeb/CSS/ImportRule.h>
-#include <LibWeb/CSS/Parser/CSSParser.h>
-#include <LibWeb/DOM/Document.h>
-#include <LibWeb/HTML/HTMLLinkElement.h>
-#include <LibWeb/Loader/ResourceLoader.h>
+#include <LibWeb/CSS/StyleSheet.h>
 
-namespace Web::HTML {
+namespace Web::CSS {
 
-HTMLLinkElement::HTMLLinkElement(DOM::Document& document, QualifiedName qualified_name)
-    : HTMLElement(document, move(qualified_name))
-    , m_css_loader(document)
-{
-    m_css_loader.on_load = [&] {
-        document.update_style();
-    };
-}
-
-HTMLLinkElement::~HTMLLinkElement()
+ImportRule::ImportRule(AK::URL&& url)
+    : m_url(move(url))
 {
 }
 
-void HTMLLinkElement::inserted_into(Node& node)
+ImportRule::~ImportRule()
 {
-    HTMLElement::inserted_into(node);
-
-    if (m_relationship & Relationship::Stylesheet && !(m_relationship & Relationship::Alternate)) {
-        m_css_loader.load_from_url(document().complete_url(href()));
-        document().style_sheets().add_sheet(m_css_loader.style_sheet().release_nonnull());
-    }
-}
-
-void HTMLLinkElement::parse_attribute(const FlyString& name, const String& value)
-{
-    if (name == HTML::AttributeNames::rel) {
-        m_relationship = 0;
-        auto parts = value.split_view(' ');
-        for (auto& part : parts) {
-            if (part == "stylesheet")
-                m_relationship |= Relationship::Stylesheet;
-            else if (part == "alternate")
-                m_relationship |= Relationship::Alternate;
-        }
-    }
 }
 
 }

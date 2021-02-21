@@ -1,5 +1,4 @@
 /*
- * Copyright (c) 2018-2020, Andreas Kling <kling@serenityos.org>
  * Copyright (c) 2021, the SerenityOS developers.
  * All rights reserved.
  *
@@ -25,51 +24,41 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <AK/ByteBuffer.h>
+#pragma once
+
 #include <AK/URL.h>
-#include <LibWeb/CSS/ImportRule.h>
-#include <LibWeb/CSS/Parser/CSSParser.h>
-#include <LibWeb/DOM/Document.h>
-#include <LibWeb/HTML/HTMLLinkElement.h>
-#include <LibWeb/Loader/ResourceLoader.h>
+#include <LibWeb/CSS/CSSRule.h>
+#include <LibWeb/Loader/Resource.h>
 
-namespace Web::HTML {
+namespace Web::CSS {
 
-HTMLLinkElement::HTMLLinkElement(DOM::Document& document, QualifiedName qualified_name)
-    : HTMLElement(document, move(qualified_name))
-    , m_css_loader(document)
-{
-    m_css_loader.on_load = [&] {
-        document.update_style();
-    };
-}
+class ImportRule : public CSSRule {
+    AK_MAKE_NONCOPYABLE(ImportRule);
+    AK_MAKE_NONMOVABLE(ImportRule);
 
-HTMLLinkElement::~HTMLLinkElement()
-{
-}
-
-void HTMLLinkElement::inserted_into(Node& node)
-{
-    HTMLElement::inserted_into(node);
-
-    if (m_relationship & Relationship::Stylesheet && !(m_relationship & Relationship::Alternate)) {
-        m_css_loader.load_from_url(document().complete_url(href()));
-        document().style_sheets().add_sheet(m_css_loader.style_sheet().release_nonnull());
+public:
+    static NonnullRefPtr<ImportRule> create(AK::URL&& url)
+    {
+        return adopt(*new ImportRule(move(url)));
     }
-}
 
-void HTMLLinkElement::parse_attribute(const FlyString& name, const String& value)
-{
-    if (name == HTML::AttributeNames::rel) {
-        m_relationship = 0;
-        auto parts = value.split_view(' ');
-        for (auto& part : parts) {
-            if (part == "stylesheet")
-                m_relationship |= Relationship::Stylesheet;
-            else if (part == "alternate")
-                m_relationship |= Relationship::Alternate;
-        }
-    }
-}
+    ~ImportRule();
+
+    const AK::URL& url() const { return m_url; }
+
+    bool has_import_result() const { return !m_style_sheet.is_null(); }
+    RefPtr<StyleSheet>& loaded_style_sheet() { return m_style_sheet; }
+    const RefPtr<StyleSheet>& loaded_style_sheet() const { return m_style_sheet; }
+    void set_style_sheet(const RefPtr<StyleSheet>& style_sheet) { m_style_sheet = style_sheet; }
+
+    virtual String class_name() const { return "Import Rule"; };
+    virtual Kind kind() const { return Kind::Import; };
+
+private:
+    ImportRule(AK::URL&& url);
+
+    AK::URL m_url;
+    RefPtr<StyleSheet> m_style_sheet;
+};
 
 }

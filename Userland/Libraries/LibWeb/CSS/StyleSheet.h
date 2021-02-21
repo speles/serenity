@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018-2020, Andreas Kling <kling@serenityos.org>
+ * Copyright (c) 2021, the SerenityOS developers.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,26 +28,61 @@
 #pragma once
 
 #include <AK/NonnullRefPtrVector.h>
-#include <LibWeb/CSS/StyleRule.h>
+#include <AK/TypeCasts.h>
+#include <LibWeb/CSS/CSSRule.h>
+#include <LibWeb/CSS/ImportRule.h>
+#include <LibWeb/Loader/Resource.h>
 
 namespace Web::CSS {
 
 class StyleSheet : public RefCounted<StyleSheet> {
 public:
-    static NonnullRefPtr<StyleSheet> create(NonnullRefPtrVector<StyleRule>&& rules)
+    static NonnullRefPtr<StyleSheet> create(NonnullRefPtrVector<CSSRule>&& rules)
     {
         return adopt(*new StyleSheet(move(rules)));
     }
 
     ~StyleSheet();
 
-    const NonnullRefPtrVector<StyleRule>& rules() const { return m_rules; }
-    NonnullRefPtrVector<StyleRule>& rules() { return m_rules; }
+    const NonnullRefPtrVector<CSSRule>& rules() const { return m_rules; }
+    NonnullRefPtrVector<CSSRule>& rules() { return m_rules; }
+
+    template<typename Callback>
+    void for_each_effective_style_rule(Callback callback) const
+    {
+        for (auto& rule : m_rules)
+            if (rule.kind() == CSSRule::Kind::Style) {
+                callback(downcast<StyleRule>(rule));
+            } else if (rule.kind() == CSSRule::Kind::Import) {
+                const ImportRule& import_rule = downcast<ImportRule>(rule);
+                if (import_rule.has_import_result())
+                    import_rule.loaded_style_sheet()->for_each_effective_style_rule(callback);
+            }
+    }
+
+    template<typename Callback>
+    bool for_first_not_loaded_import_rule(Callback callback)
+    {
+        for (auto& rule : m_rules)
+            if (rule.kind() == CSSRule::Kind::Import) {
+                ImportRule& import_rule = downcast<ImportRule>(rule);
+                if (!import_rule.has_import_result()) {
+                    callback(import_rule);
+                    return true;
+                }
+
+                if (import_rule.loaded_style_sheet()->for_first_not_loaded_import_rule(callback)) {
+                    return true;
+                }
+            }
+
+        return false;
+    }
 
 private:
-    explicit StyleSheet(NonnullRefPtrVector<StyleRule>&&);
+    explicit StyleSheet(NonnullRefPtrVector<CSSRule>&&);
 
-    NonnullRefPtrVector<StyleRule> m_rules;
+    NonnullRefPtrVector<CSSRule> m_rules;
 };
 
 }

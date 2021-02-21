@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020, Andreas Kling <kling@serenityos.org>
+ * Copyright (c) 2021, the SerenityOS developers.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,36 +26,28 @@
 
 #pragma once
 
-#include <AK/NonnullRefPtrVector.h>
-#include <LibWeb/CSS/CSSRule.h>
+#include <AK/RefCounted.h>
+#include <AK/String.h>
 #include <LibWeb/CSS/Selector.h>
 #include <LibWeb/CSS/StyleDeclaration.h>
 
 namespace Web::CSS {
 
-class StyleRule : public CSSRule {
-    AK_MAKE_NONCOPYABLE(StyleRule);
-    AK_MAKE_NONMOVABLE(StyleRule);
-
+class CSSRule : public RefCounted<CSSRule> {
 public:
-    static NonnullRefPtr<StyleRule> create(Vector<Selector>&& selectors, NonnullRefPtr<StyleDeclaration>&& declaration)
-    {
-        return adopt(*new StyleRule(move(selectors), move(declaration)));
-    }
+    virtual ~CSSRule();
 
-    ~StyleRule();
+    enum class Kind : u32 {
+        Style,
+        Import,
+        Media,
+        __Count,
+    };
 
-    const Vector<Selector>& selectors() const { return m_selectors; }
-    const StyleDeclaration& declaration() const { return m_declaration; }
-
-    virtual String class_name() const { return "Style Rule"; };
-    virtual Kind kind() const { return Kind::Style; };
+    virtual String class_name() const = 0;
+    virtual Kind kind() const = 0;
 
 private:
-    StyleRule(Vector<Selector>&&, NonnullRefPtr<StyleDeclaration>&&);
-
-    Vector<Selector> m_selectors;
-    NonnullRefPtr<StyleDeclaration> m_declaration;
 };
 
 }

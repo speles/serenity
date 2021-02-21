@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2020, Linus Groh <mail@linusgroh.de>
+ * Copyright (c) 2021, the SerenityOS developers.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,6 +26,7 @@
  */
 
 #include <LibWeb/CSS/StyleInvalidator.h>
+#include <LibWeb/CSS/StyleRule.h>
 #include <LibWeb/DOM/Document.h>
 #include <LibWeb/DOM/Element.h>
 

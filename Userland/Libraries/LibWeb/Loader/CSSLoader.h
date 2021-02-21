@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020, Andreas Kling <kling@serenityos.org>
+ * Copyright (c) 2020, Andreas Kling <kling@serenityos.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,36 +26,33 @@
 
 #pragma once
 
-#include <AK/NonnullRefPtrVector.h>
-#include <LibWeb/CSS/CSSRule.h>
-#include <LibWeb/CSS/Selector.h>
-#include <LibWeb/CSS/StyleDeclaration.h>
+#include <AK/Function.h>
+#include <LibWeb/CSS/StyleSheet.h>
+#include <LibWeb/Loader/Resource.h>
 
-namespace Web::CSS {
+namespace Web {
 
-class StyleRule : public CSSRule {
-    AK_MAKE_NONCOPYABLE(StyleRule);
-    AK_MAKE_NONMOVABLE(StyleRule);
-
+class CSSLoader : public ResourceClient {
 public:
-    static NonnullRefPtr<StyleRule> create(Vector<Selector>&& selectors, NonnullRefPtr<StyleDeclaration>&& declaration)
-    {
-        return adopt(*new StyleRule(move(selectors), move(declaration)));
-    }
+    CSSLoader(DOM::Document& document);
 
-    ~StyleRule();
+    void load_from_text(const String&);
+    void load_from_url(const URL&);
 
-    const Vector<Selector>& selectors() const { return m_selectors; }
-    const StyleDeclaration& declaration() const { return m_declaration; }
+    void load_next_import_if_needed();
 
-    virtual String class_name() const { return "Style Rule"; };
-    virtual Kind kind() const { return Kind::Style; };
+    RefPtr<CSS::StyleSheet> style_sheet() const { return m_style_sheet; };
+
+    Function<void()> on_load;
+    Function<void()> on_fail;
 
 private:
-    StyleRule(Vector<Selector>&&, NonnullRefPtr<StyleDeclaration>&&);
+    // ^ResourceClient
+    virtual void resource_did_load() override;
+    virtual void resource_did_fail() override;
 
-    Vector<Selector> m_selectors;
-    NonnullRefPtr<StyleDeclaration> m_declaration;
+    RefPtr<CSS::StyleSheet> m_style_sheet;
+    const DOM::Document* m_document;
 };
 
 }

@@ -28,6 +28,7 @@
 
 #include <AK/RefCounted.h>
 #include <LibWeb/CSS/StyleSheet.h>
+#include <LibWeb/Forward.h>
 
 namespace Web::CSS {
 

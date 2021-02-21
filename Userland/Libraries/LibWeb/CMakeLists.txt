@@ -9,7 +9,9 @@ set(SOURCES
     Bindings/ScriptExecutionContext.cpp
     Bindings/WindowObject.cpp
     Bindings/Wrappable.cpp
+    CSS/CSSRule.cpp
     CSS/DefaultStyleSheetSource.cpp
+    CSS/ImportRule.cpp
     CSS/Length.cpp
     CSS/Parser/CSSParser.cpp
     CSS/PropertyID.cpp
@@ -174,6 +176,7 @@ set(SOURCES
     Layout/TreeBuilder.cpp
     LayoutTreeModel.cpp
     Loader/ContentFilter.cpp
+    Loader/CSSLoader.cpp
     Loader/FrameLoader.cpp
     Loader/ImageLoader.cpp
     Loader/ImageResource.cpp

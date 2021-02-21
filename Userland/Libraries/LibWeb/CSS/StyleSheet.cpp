@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018-2020, Andreas Kling <kling@serenityos.org>
+ * Copyright (c) 2021, the SerenityOS developers.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,11 +25,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <AK/TypeCasts.h>
+#include <LibWeb/CSS/CSSRule.h>
+#include <LibWeb/CSS/ImportRule.h>
+#include <LibWeb/CSS/Parser/CSSParser.h>
+#include <LibWeb/CSS/StyleRule.h>
 #include <LibWeb/CSS/StyleSheet.h>
 
 namespace Web::CSS {
 
-StyleSheet::StyleSheet(NonnullRefPtrVector<StyleRule>&& rules)
+StyleSheet::StyleSheet(NonnullRefPtrVector<CSSRule>&& rules)
     : m_rules(move(rules))
 {
 }
