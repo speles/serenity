@@ -102,7 +102,7 @@ void Interpreter::enter_scope(const ScopeNode& scope_node, ScopeType scope_type,
 
     for (auto& declaration : scope_node.variables()) {
         for (auto& declarator : declaration.declarations()) {
-            if (is<Program>(scope_node)) {
+            if (is<Program>(scope_node) && declaration.declaration_kind() == DeclarationKind::Var) {
                 global_object.put(declarator.id().string(), js_undefined());
                 if (exception())
                     return;
