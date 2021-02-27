@@ -245,6 +245,14 @@ void OutOfProcessWebView::notify_server_did_request_scroll_into_view(Badge<WebCo
     scroll_into_view(rect, true, true);
 }
 
+void OutOfProcessWebView::notify_server_did_request_viewport_scroll_offset(Badge<WebContentClient>, const Gfx::IntPoint& offset)
+{
+    dbgln("Will set scroll values to {}", offset);
+
+    horizontal_scrollbar().set_value(offset.x());
+    vertical_scrollbar().set_value(offset.y());
+}
+
 void OutOfProcessWebView::notify_server_did_hover_link(Badge<WebContentClient>, const URL& url)
 {
     set_override_cursor(Gfx::StandardCursor::Hand);

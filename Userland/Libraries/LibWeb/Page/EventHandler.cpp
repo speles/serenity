@@ -75,15 +75,32 @@ Layout::InitialContainingBlockBox* EventHandler::layout_root()
 
 bool EventHandler::handle_mousewheel(const Gfx::IntPoint& position, unsigned int buttons, unsigned int modifiers, int wheel_delta)
 {
-    if (!layout_root())
+    dbgln("Received handle_mousewheel");
+    if (!layout_root()) {
+        dbgln("Exiting early: !layout_root");
         return false;
+    }
 
     // FIXME: Support wheel events in subframes.
 
     auto result = layout_root()->hit_test(position, Layout::HitTestType::Exact);
     if (result.layout_node) {
         result.layout_node->handle_mousewheel({}, position, buttons, modifiers, wheel_delta);
-        return true;
+        dbgln("Exiting early: result.layout_node");
+    }
+
+    auto new_scroll_offset = m_frame.viewport_rect().top_left();
+
+    // TODO: These calculations basically repeat ScrollableWidget::handle_wheel_event. Maybe we can unify them somehow?
+    if (modifiers & Mod_Shift) {
+        new_scroll_offset.set_x(new_scroll_offset.x() + wheel_delta * 60);
+    } else {
+        new_scroll_offset.set_y(new_scroll_offset.y() + wheel_delta * 20);
+    }
+
+    dbgln("Will send page_did_request_viewport_scroll_offset");
+    if (auto* page = m_frame.page()) {
+        page->client().page_did_request_viewport_scroll_offset(new_scroll_offset);
     }
 
     return false;

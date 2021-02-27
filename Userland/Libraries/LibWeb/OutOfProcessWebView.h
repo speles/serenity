@@ -58,6 +58,7 @@ public:
     void notify_server_did_change_selection(Badge<WebContentClient>);
     void notify_server_did_change_title(Badge<WebContentClient>, const String&);
     void notify_server_did_request_scroll_into_view(Badge<WebContentClient>, const Gfx::IntRect&);
+    void notify_server_did_request_viewport_scroll_offset(Badge<WebContentClient>, const Gfx::IntPoint&);
     void notify_server_did_hover_link(Badge<WebContentClient>, const URL&);
     void notify_server_did_unhover_link(Badge<WebContentClient>);
     void notify_server_did_click_link(Badge<WebContentClient>, const URL&, const String& target, unsigned modifiers);

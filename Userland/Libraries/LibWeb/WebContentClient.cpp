@@ -92,6 +92,12 @@ void WebContentClient::handle(const Messages::WebContentClient::DidRequestScroll
     m_view.notify_server_did_request_scroll_into_view({}, message.rect());
 }
 
+void WebContentClient::handle(const Messages::WebContentClient::DidRequestViewportScrollOffset& message)
+{
+    dbgln_if(SPAM_DEBUG, "handle: WebContentClient::DidRequestViewportScrollOffset! offset={}", message.offset());
+    m_view.notify_server_did_request_viewport_scroll_offset({}, message.offset());
+}
+
 void WebContentClient::handle(const Messages::WebContentClient::DidHoverLink& message)
 {
     dbgln_if(SPAM_DEBUG, "handle: WebContentClient::DidHoverLink! url={}", message.url());

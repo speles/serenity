@@ -131,6 +131,11 @@ void PageHost::page_did_request_scroll_into_view(const Gfx::IntRect& rect)
     m_client.post_message(Messages::WebContentClient::DidRequestScrollIntoView(rect));
 }
 
+void PageHost::page_did_request_viewport_scroll_offset(const Gfx::IntPoint& offset)
+{
+    m_client.post_message(Messages::WebContentClient::DidRequestViewportScrollOffset(offset));
+}
+
 void PageHost::page_did_hover_link(const URL& url)
 {
     m_client.post_message(Messages::WebContentClient::DidHoverLink(url));
