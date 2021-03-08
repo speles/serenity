@@ -64,6 +64,8 @@ private:
     void place_block_level_replaced_element_in_normal_flow(Box& child, Box& container);
     void place_block_level_non_replaced_element_in_normal_flow(Box& child, Box& container);
 
+    float clear_floating_boxes(Vector<Box*>& floating_boxes, Box& containing_block);
+
     void layout_floating_child(Box&, Box& containing_block);
 
     Vector<Box*> m_left_floating_boxes;

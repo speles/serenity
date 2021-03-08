@@ -45,7 +45,7 @@ void Box::paint(PaintContext& context, PaintPhase phase)
 
     auto padded_rect = this->padded_rect();
 
-    if (phase == PaintPhase::Background && !is_body()) {
+    if (phase == PaintPhase::Background) {
         auto background_rect = enclosing_int_rect(padded_rect);
         context.painter().fill_rect(background_rect, computed_values().background_color());
         if (background_image() && background_image()->bitmap()) {
@@ -53,8 +53,8 @@ void Box::paint(PaintContext& context, PaintPhase phase)
         }
     }
 
+    auto bordered_rect = this->bordered_rect();
     if (phase == PaintPhase::Border) {
-        auto bordered_rect = this->bordered_rect();
         Painting::paint_border(context, Painting::BorderEdge::Left, bordered_rect, computed_values());
         Painting::paint_border(context, Painting::BorderEdge::Right, bordered_rect, computed_values());
         Painting::paint_border(context, Painting::BorderEdge::Top, bordered_rect, computed_values());
@@ -72,6 +72,13 @@ void Box::paint(PaintContext& context, PaintPhase phase)
         margin_rect.set_width(width() + margin_box.left + margin_box.right);
         margin_rect.set_y(absolute_y() - margin_box.top);
         margin_rect.set_height(height() + margin_box.top + margin_box.bottom);
+
+        dbgln("Content rect: {}", content_rect);
+        dbgln("Padded rect: {}", padded_rect);
+        dbgln("Bordered rect: {}", bordered_rect);
+        dbgln("Margin rect: {}", margin_rect);
+
+        dbgln("Border rect l:{} r:{} t:{} b:{}", box_model().border.left, box_model().border.right, box_model().border.top, box_model().border.bottom);
 
         context.painter().draw_rect(enclosing_int_rect(margin_rect), Color::Yellow);
         context.painter().draw_rect(enclosing_int_rect(padded_rect), Color::Cyan);

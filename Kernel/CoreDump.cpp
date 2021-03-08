@@ -329,7 +329,7 @@ KResult CoreDump::write()
     if (result.is_error())
         return result;
 
-    return m_fd->chmod(0400); // Make coredump file readable
+    return m_fd->chmod(0440); // Make coredump file readable
 }
 
 }

@@ -173,7 +173,7 @@ static Gfx::FloatSize solve_replaced_size_constraint(float w, float h, const Rep
     return { w, h };
 }
 
-float FormattingContext::tentative_width_for_replaced_element(const ReplacedBox& box, const CSS::Length& width)
+float FormattingContext::tentative_width_for_replaced_element(ReplacedBox& box, const CSS::Length& width)
 {
     auto& containing_block = *box.containing_block();
     auto specified_height = box.computed_values().height().resolved_or_auto(box, containing_block.height());
@@ -223,16 +223,20 @@ void FormattingContext::compute_height_for_absolutely_positioned_element(Box& bo
         compute_height_for_absolutely_positioned_non_replaced_element(box);
 }
 
-float FormattingContext::compute_width_for_replaced_element(const ReplacedBox& box)
+float FormattingContext::compute_width_for_replaced_element(ReplacedBox& box)
 {
     // 10.3.4 Block-level, replaced elements in normal flow...
     // 10.3.2 Inline, replaced elements
 
+    auto& computed_values = box.computed_values();
     auto zero_value = CSS::Length::make_px(0);
     auto& containing_block = *box.containing_block();
+    float width_of_containing_block = containing_block.width();
 
-    auto margin_left = box.computed_values().margin().left.resolved_or_zero(box, containing_block.width());
-    auto margin_right = box.computed_values().margin().right.resolved_or_zero(box, containing_block.width());
+    auto margin_left = computed_values.margin().left.resolved_or_zero(box, width_of_containing_block);
+    auto margin_right = computed_values.margin().right.resolved_or_zero(box, width_of_containing_block);
+    const auto padding_left = computed_values.padding().left.resolved_or_zero(box, width_of_containing_block);
+    const auto padding_right = computed_values.padding().right.resolved_or_zero(box, width_of_containing_block);
 
     // A computed value of 'auto' for 'margin-left' or 'margin-right' becomes a used value of '0'.
     if (margin_left.is_auto())
@@ -240,14 +244,14 @@ float FormattingContext::compute_width_for_replaced_element(const ReplacedBox& b
     if (margin_right.is_auto())
         margin_right = zero_value;
 
-    auto specified_width = box.computed_values().width().resolved_or_auto(box, containing_block.width());
+    auto specified_width = box.computed_values().width().resolved_or_auto(box, width_of_containing_block);
 
     // 1. The tentative used width is calculated (without 'min-width' and 'max-width')
     auto used_width = tentative_width_for_replaced_element(box, specified_width);
 
     // 2. The tentative used width is greater than 'max-width', the rules above are applied again,
     //    but this time using the computed value of 'max-width' as the computed value for 'width'.
-    auto specified_max_width = box.computed_values().max_width().resolved_or_auto(box, containing_block.width());
+    auto specified_max_width = box.computed_values().max_width().resolved_or_auto(box, width_of_containing_block);
     if (!specified_max_width.is_auto()) {
         if (used_width > specified_max_width.to_px(box)) {
             used_width = tentative_width_for_replaced_element(box, specified_max_width);
@@ -256,17 +260,24 @@ float FormattingContext::compute_width_for_replaced_element(const ReplacedBox& b
 
     // 3. If the resulting width is smaller than 'min-width', the rules above are applied again,
     //    but this time using the value of 'min-width' as the computed value for 'width'.
-    auto specified_min_width = box.computed_values().min_width().resolved_or_auto(box, containing_block.width());
+    auto specified_min_width = box.computed_values().min_width().resolved_or_auto(box, width_of_containing_block);
     if (!specified_min_width.is_auto()) {
         if (used_width < specified_min_width.to_px(box)) {
             used_width = tentative_width_for_replaced_element(box, specified_min_width);
         }
     }
 
+    box.box_model().margin.left = margin_left.to_px(box);
+    box.box_model().margin.right = margin_right.to_px(box);
+    box.box_model().border.left = computed_values.border_left().width;
+    box.box_model().border.right = computed_values.border_right().width;
+    box.box_model().padding.left = padding_left.to_px(box);
+    box.box_model().padding.right = padding_right.to_px(box);
+
     return used_width;
 }
 
-float FormattingContext::tentative_height_for_replaced_element(const ReplacedBox& box, const CSS::Length& height)
+float FormattingContext::tentative_height_for_replaced_element(ReplacedBox& box, const CSS::Length& height)
 {
     auto& containing_block = *box.containing_block();
     auto specified_width = box.computed_values().width().resolved_or_auto(box, containing_block.width());
@@ -287,7 +298,7 @@ float FormattingContext::tentative_height_for_replaced_element(const ReplacedBox
     return used_height;
 }
 
-float FormattingContext::compute_height_for_replaced_element(const ReplacedBox& box)
+float FormattingContext::compute_height_for_replaced_element(ReplacedBox& box)
 {
     // 10.6.2 Inline replaced elements, block-level replaced elements in normal flow,
     // 'inline-block' replaced elements in normal flow and floating replaced elements

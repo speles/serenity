@@ -96,6 +96,7 @@ void dump_tree(const Layout::Node& layout_node, bool show_box_model, bool show_s
 
 void dump_tree(StringBuilder& builder, const Layout::Node& layout_node, bool show_box_model, bool show_specified_style, bool interactive)
 {
+    show_box_model = true;
     static size_t indent = 0;
     for (size_t i = 0; i < indent; ++i)
         builder.append("  ");

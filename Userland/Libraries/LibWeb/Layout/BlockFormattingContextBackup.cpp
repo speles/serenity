@@ -24,10 +24,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <AK/QuickSort.h>
 #include <LibWeb/CSS/Length.h>
 #include <LibWeb/DOM/Node.h>
-#include <LibWeb/Dump.h>
 #include <LibWeb/Layout/BlockBox.h>
 #include <LibWeb/Layout/BlockFormattingContext.h>
 #include <LibWeb/Layout/Box.h>
@@ -387,40 +385,6 @@ void BlockFormattingContext::place_block_level_replaced_element_in_normal_flow(B
     child_box.set_offset(x, y);
 }
 
-static float y_from_coordinate_space(float y, const Box& box, const Box* context_box)
-{
-    for (auto* ancestor = box.parent(); ancestor && ancestor != context_box; ancestor = ancestor->parent()) {
-        if (is<Box>(*ancestor)) {
-            auto offset = downcast<Box>(*ancestor).effective_offset();
-            y -= offset.y();
-        }
-    }
-    return y;
-}
-
-static float x_from_coordinate_space(float x, const Box& box, const Box* context_box)
-{
-    for (auto* ancestor = box.parent(); ancestor && ancestor != context_box; ancestor = ancestor->parent()) {
-        if (is<Box>(*ancestor)) {
-            auto offset = downcast<Box>(*ancestor).effective_offset();
-            x -= offset.x();
-        }
-    }
-    return x;
-}
-
-// static Gfx::FloatPoint pos_from_coordinate_space(const Gfx::FloatPoint& pos, const Box& box, const Box& context_box)
-// {
-//     Gfx::FloatPoint result_pos { pos };
-//     for (auto* ancestor = box.parent(); ancestor && ancestor != &context_box; ancestor = ancestor->parent()) {
-//         if (is<Box>(*ancestor)) {
-//             auto offset = downcast<Box>(*ancestor).effective_offset();
-//             result_pos.move_by(-offset);
-//         }
-//     }
-//     return result_pos;
-// }
-
 void BlockFormattingContext::place_block_level_non_replaced_element_in_normal_flow(Box& child_box, Box& containing_block)
 {
     auto& box_model = child_box.box_model();
@@ -482,150 +446,31 @@ void BlockFormattingContext::place_block_level_non_replaced_element_in_normal_fl
         }
     }
 
-    if (child_box.computed_values().clear() == CSS::Clear::Left || child_box.computed_values().clear() == CSS::Clear::Both) {
+    if (child_box.computed_values().clear() == CSS::Clear::Left || child_box.computed_values().clear() == CSS::Clear::Both)
         if (!m_left_floating_boxes.is_empty()) {
             x = own_offset_x;
-            y = max(y, clear_floating_boxes(m_left_floating_boxes, containing_block) + own_offset_y);
+            y = max(y, clearance_for_floating_boxes(m_left_floating_boxes, containing_block) + own_offset_y);
+            m_left_floating_boxes.clear();
         }
-    }
 
-    if (child_box.computed_values().clear() == CSS::Clear::Right || child_box.computed_values().clear() == CSS::Clear::Both) {
+    if (child_box.computed_values().clear() == CSS::Clear::Right || child_box.computed_values().clear() == CSS::Clear::Both)
         if (!m_right_floating_boxes.is_empty()) {
             x = own_offset_x;
-            y = max(y, clear_floating_boxes(m_right_floating_boxes, containing_block) + own_offset_y);
+            y = max(y, clearance_for_floating_boxes(m_right_floating_boxes, containing_block) + own_offset_y);
+            m_right_floating_boxes.clear();
         }
-    }
-    // dbgln("Context box is:");
-    // dump_tree(context_box());
 
-    dbgln("Trying offset X {} Y {}", x, y);
-    child_box.set_offset(x, y);
-    if (child_box.children_are_inline()) {
+    // If we cleared floating siblings, re-layout children with new position and thus possibly new size
+    if (child_box.computed_values().clear() != CSS::Clear::None) {
         compute_width(child_box);
         layout_inside(child_box, LayoutMode::Default);
         compute_height(child_box);
     }
 
-    auto should_reevaluate = [&] {
-        if (m_left_floating_boxes.is_empty() && m_right_floating_boxes.is_empty()) {
-            return false;
-        }
-
-        if (!m_left_floating_boxes.is_empty() && child_box.is_ancestor_of(*m_left_floating_boxes.first()))
-            return false;
-        if (!m_right_floating_boxes.is_empty() && child_box.is_ancestor_of(*m_right_floating_boxes.first()))
-            return false;
-
-        Box* first_non_empty_box = nullptr;
-
-        child_box.for_each_in_subtree_of_type<Box>([&](Box& descendant) {
-            if (descendant.dom_node()) {
-                dbgln("In descendant {} {}", descendant.dom_node()->node_name().characters(), descendant.dom_node()->text_content());
-            }
-
-            if (descendant.is_floating() && &descendant != &child_box) {
-                dbgln("Early return because floating");
-                return IterationDecision::Continue;
-            }
-
-            if (!descendant.is_floating()) {
-                if (!descendant.children_are_inline()) {
-                    dbgln("Early return because inline");
-                    return IterationDecision::Continue;
-                }
-
-                if (descendant.line_boxes().is_empty()) {
-                    dbgln("Early return because no line boxes");
-                    return IterationDecision::Continue;
-                }
-            } else {
-                dbgln("Early return because floating!");
-            }
-
-            // dbgln("Laying out this box:");
-            // dump_tree(child_box);
-            // dbgln("Chose this box as reference!");
-            // dump_tree(descendant);
-            first_non_empty_box = &descendant;
-            return IterationDecision::Break;
-        });
-
-        if (first_non_empty_box) {
-            float desired_width = first_non_empty_box->is_floating() ? first_non_empty_box->margin_box_width() : first_non_empty_box->line_boxes().first().width();
-            float available_x_start = containing_block.absolute_position().x(), available_x_end = containing_block.absolute_position().x() + containing_block.width();
-            dbgln("Left boxes {}, right boxes {}", m_left_floating_boxes.size(), m_right_floating_boxes.size());
-            for (ssize_t i = m_left_floating_boxes.size() - 1; i >= 0; --i) {
-                auto& floating_box = *m_left_floating_boxes.at(i);
-                auto rect = floating_box.absolute_rect();
-                rect.set_x(rect.x() - floating_box.box_model().margin_box().left);
-                rect.set_width(rect.width() + floating_box.box_model().margin_box().left + floating_box.box_model().margin_box().right);
-                rect.set_y(rect.y() - floating_box.box_model().margin_box().top);
-                rect.set_height(rect.height() + floating_box.box_model().margin_box().top + floating_box.box_model().margin_box().bottom);
-                dbgln("Checking left box {}-{}, {}", rect.top(), rect.bottom(), child_box.absolute_position().y() - child_box.box_model().margin_box().top);
-                if (rect.contains_vertically(child_box.absolute_position().y() - child_box.box_model().margin_box().top)) {
-                    available_x_start = rect.right() + 1;
-                    break;
-                }
-            }
-            for (ssize_t i = m_right_floating_boxes.size() - 1; i >= 0; --i) {
-                auto& floating_box = *m_right_floating_boxes.at(i);
-                auto rect = floating_box.absolute_rect();
-                rect.set_x(rect.x() - floating_box.box_model().margin_box().left);
-                rect.set_width(rect.width() + floating_box.box_model().margin_box().left + floating_box.box_model().margin_box().right);
-                rect.set_y(rect.y() - floating_box.box_model().margin_box().top);
-                rect.set_height(rect.height() + floating_box.box_model().margin_box().top + floating_box.box_model().margin_box().bottom);
-                dbgln("Checking right box {}-{}, {}", rect.top(), rect.bottom(), child_box.absolute_position().y() - child_box.box_model().margin_box().top);
-                if (rect.contains_vertically(child_box.absolute_position().y() - child_box.box_model().margin_box().top)) {
-                    available_x_end = rect.left() - 1;
-                    break;
-                }
-            }
-            float available_width = available_x_end - available_x_start;
-
-            if (available_width < desired_width) {
-                dbgln("Can try to reevaluate available = {}, needed {}!", available_width, desired_width);
-                return true;
-            } else {
-                dbgln("Satisfied available = {}, needed {}!", available_width, desired_width);
-            }
-        }
-        return false;
-    };
-
-    if (should_reevaluate()) {
-        Vector<float> y_offsets_to_try;
-        // FIXME: Collapse margins
-        for (const auto& box : m_left_floating_boxes) {
-            float box_bottom_offset = y_from_coordinate_space(box->absolute_rect().bottom() + own_offset_y + 1, child_box, nullptr);
-            y_offsets_to_try.append(box_bottom_offset);
-            dbgln("Adding offset for left box {}", box_bottom_offset);
-        }
-        for (const auto& box : m_right_floating_boxes) {
-            float box_bottom_offset = y_from_coordinate_space(box->absolute_rect().bottom() + own_offset_y + 1, child_box, nullptr);
-            y_offsets_to_try.append(box_bottom_offset);
-            dbgln("Adding offset for right box {}", box_bottom_offset);
-        }
-        quick_sort(y_offsets_to_try);
-        for (float y_try_offset : y_offsets_to_try) {
-            y = y_try_offset;
-            dbgln("Trying offset X {} Y {}", x, y);
-
-            child_box.set_offset(x, y);
-            if (child_box.children_are_inline()) {
-                compute_width(child_box);
-                layout_inside(child_box, LayoutMode::Default);
-                compute_height(child_box);
-            }
-
-            if (!should_reevaluate()) {
-                dbgln("Found Y offset that works: {}", y_try_offset);
-                break;
-            }
-        }
-    }
+    child_box.set_offset(x, y);
 }
 
-float BlockFormattingContext::clear_floating_boxes(Vector<Box*>& floating_boxes, Box& containing_block)
+float BlockFormattingContext::clearance_for_floating_boxes(Vector<Box*>& floating_boxes, Box& containing_block)
 {
     float clearance_y = 0;
     for (auto* floating_box : floating_boxes) {
@@ -635,8 +480,6 @@ float BlockFormattingContext::clear_floating_boxes(Vector<Box*>& floating_boxes,
         }
         clearance_y = max(clearance_y, total_offset_in_containing_block_y + floating_box->size().height() + floating_box->box_model().margin_box().bottom);
     }
-    floating_boxes.clear();
-    dbgln("Clearing floating boxes!");
     return clearance_y;
 }
 
@@ -676,6 +519,17 @@ static Gfx::FloatRect rect_in_coordinate_space(const Box& box, const Box& contex
     return rect;
 }
 
+static float y_from_coordinate_space(float y, const Box& box, const Box& context_box)
+{
+    for (auto* ancestor = box.parent(); ancestor && ancestor != &context_box; ancestor = ancestor->parent()) {
+        if (is<Box>(*ancestor)) {
+            auto offset = downcast<Box>(*ancestor).effective_offset();
+            y -= offset.y();
+        }
+    }
+    return y;
+}
+
 void BlockFormattingContext::layout_floating_child(Box& box, Box& containing_block)
 {
     VERIFY(box.is_floating());
@@ -692,6 +546,10 @@ void BlockFormattingContext::layout_floating_child(Box& box, Box& containing_blo
         + box_model.border.left
         + box_model.padding.left
         + box_model.offset.left;
+    float own_offset_y = box_model.margin.top
+        + box_model.border.top
+        + box_model.padding.top
+        + box_model.offset.top;
 
     // Then we float it to the left or right.
     float x = 0;
@@ -702,25 +560,40 @@ void BlockFormattingContext::layout_floating_child(Box& box, Box& containing_blo
     box_in_context_rect.set_height(box_in_context_rect.height() + box.box_model().margin_box().top + box.box_model().margin_box().bottom);
     float y_in_context_box = box_in_context_rect.y();
 
-    float y = box.effective_offset().y();
+    float y = own_offset_y;
 
     bool do_log = false;
-    if (box.dom_node() && (box.dom_node()->node_name() == "li" || box.dom_node()->node_name() == "blockquote" || box.dom_node()->node_name() == "div")) {
+    if (box.dom_node() && (box.dom_node()->node_name() == "li" || box.dom_node()->node_name() == "blockquote")) {
         do_log = true;
         dbgln("Laying out floating {} with {}", box.dom_node()->node_name(), box.dom_node()->child_text_content());
-        // dbgln("L: {}", box_model.margin.left);
-        // dbgln("R: {}", box_model.margin.right);
-        // dbgln("T: {}", box_model.margin.top);
-        // dbgln("B: {}", box_model.margin.bottom);
-        // dbgln("OwnOffset: {},{}", own_offset_x, y);
+        dbgln("L: {}", box_model.margin.left);
+        dbgln("R: {}", box_model.margin.right);
+        dbgln("T: {}", box_model.margin.top);
+        dbgln("B: {}", box_model.margin.bottom);
     }
 
     // Next, float to the left and/or right
     if (box.computed_values().float_() == CSS::Float::Left) {
-        if (!m_left_floating_boxes.is_empty()) {
-            auto& previous_floating_box = *m_left_floating_boxes.last();
+        Layout::BlockBox* p_previous_floating_box { nullptr };
+        context_box().for_each_in_subtree_of_type<Layout::BlockBox>([&](auto& block_box) {
+            if (&block_box == &box) {
+                return IterationDecision::Break;
+            }
+
+            if (block_box.computed_values().clear() == CSS::Clear::Left || block_box.computed_values().clear() == CSS::Clear::Both) {
+                y = y_from_coordinate_space(rect_in_coordinate_space(block_box, context_box()).y(), box, context_box());
+                p_previous_floating_box = nullptr;
+            } else if (block_box.computed_values().float_() == CSS::Float::Left) {
+                y = y_from_coordinate_space(rect_in_coordinate_space(block_box, context_box()).y(), box, context_box());
+                p_previous_floating_box = &block_box;
+            }
+
+            return IterationDecision::Continue;
+        });
+
+        if (p_previous_floating_box) {
+            auto& previous_floating_box = *p_previous_floating_box;
             auto previous_rect = rect_in_coordinate_space(previous_floating_box, context_box());
-            dbgln("Previous rect is {} before expanding", previous_rect);
             previous_rect.set_x(previous_rect.x() - previous_floating_box.box_model().margin_box().left);
             previous_rect.set_width(previous_rect.width() + previous_floating_box.box_model().margin_box().left + previous_floating_box.box_model().margin_box().right);
             previous_rect.set_y(previous_rect.y() - previous_floating_box.box_model().margin_box().top);
@@ -729,9 +602,9 @@ void BlockFormattingContext::layout_floating_child(Box& box, Box& containing_blo
             dbgln("Content box width is {}", context_box().width());
             if (context_box().dom_node())
                 dbgln("Context box: {}", context_box().dom_node()->node_name());
-            if (previous_rect.contains_vertically(y_in_context_box)) {
+            if (previous_rect.right() + box_in_context_rect.width() <= context_box().width()) {
                 // This box touches another already floating box. Stack to the right.
-                x = x_from_coordinate_space(previous_rect.right() + own_offset_x, box, &context_box());
+                x = previous_rect.right() + own_offset_x;
                 if (do_log)
                     dbgln("Stacking to left box x = {}", x);
             } else {
@@ -739,8 +612,7 @@ void BlockFormattingContext::layout_floating_child(Box& box, Box& containing_blo
                     dbgln("Stacking left and forget previous boxes");
                 // This box does not touch another floating box, go all the way to the left.
                 x = own_offset_x;
-                // Also, forget all previous left-floating boxes while we're here since they're no longer relevant.
-                y += clear_floating_boxes(m_left_floating_boxes, containing_block);
+                y += clearance_for_floating_boxes(m_left_floating_boxes, containing_block);
             }
         } else {
             if (do_log)
@@ -748,7 +620,6 @@ void BlockFormattingContext::layout_floating_child(Box& box, Box& containing_blo
             // This is the first left-floating box. Go all the way to the left.
             x = own_offset_x;
         }
-        dbgln("Added to left floating boxes!");
         m_left_floating_boxes.append(&box);
     } else if (box.computed_values().float_() == CSS::Float::Right) {
         if (!m_right_floating_boxes.is_empty()) {
@@ -761,17 +632,20 @@ void BlockFormattingContext::layout_floating_child(Box& box, Box& containing_blo
                 // This box does not touch another floating box, go all the way to the right.
                 x = containing_block.width() - box.width() - box.box_model().margin_box().right;
                 // Also, forget all previous right-floating boxes while we're here since they're no longer relevant.
-                y += clear_floating_boxes(m_right_floating_boxes, containing_block);
+                y += clearance_for_floating_boxes(m_right_floating_boxes, containing_block);
+                m_right_floating_boxes.clear();
             }
         } else {
             // This is the first right-floating box. Go all the way to the right.
             x = containing_block.width() - box.width() - box.box_model().margin_box().right;
         }
-        dbgln("Added to right floating boxes!");
         m_right_floating_boxes.append(&box);
     }
 
     box.set_offset(x, y);
+
+    // If we cleared floating siblings, re-layout children with new position and thus possibly new size
+    layout_inside(box, LayoutMode::Default);
 }
 
 }

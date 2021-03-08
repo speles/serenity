@@ -44,8 +44,8 @@ public:
 
     static bool creates_block_formatting_context(const Box&);
 
-    static float compute_width_for_replaced_element(const ReplacedBox&);
-    static float compute_height_for_replaced_element(const ReplacedBox&);
+    static float compute_width_for_replaced_element(ReplacedBox&);
+    static float compute_height_for_replaced_element(ReplacedBox&);
 
 protected:
     FormattingContext(Box&, FormattingContext* parent = nullptr);
@@ -58,8 +58,8 @@ protected:
         float preferred_minimum_width { 0 };
     };
 
-    static float tentative_width_for_replaced_element(const ReplacedBox&, const CSS::Length& width);
-    static float tentative_height_for_replaced_element(const ReplacedBox&, const CSS::Length& width);
+    static float tentative_width_for_replaced_element(ReplacedBox&, const CSS::Length& width);
+    static float tentative_height_for_replaced_element(ReplacedBox&, const CSS::Length& width);
 
     ShrinkToFitResult calculate_shrink_to_fit_widths(Box&);
 
