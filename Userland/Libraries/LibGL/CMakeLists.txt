@@ -13,6 +13,7 @@ set(SOURCES
     GLUtils.cpp
     GLVert.cpp
     GLVertexArrays.cpp
+    OSMesaGLContext.cpp
     SoftwareGLContext.cpp
     Tex/NameAllocator.cpp
     Tex/Texture2D.cpp
@@ -20,4 +21,4 @@ set(SOURCES
 )
 
 serenity_lib(LibGL gl)
-target_link_libraries(LibGL LibM LibCore LibGfx LibSoftGPU)
+target_link_libraries(LibGL LibDl LibM LibCore LibGfx LibSoftGPU)

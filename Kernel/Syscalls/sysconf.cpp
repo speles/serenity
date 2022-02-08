@@ -5,6 +5,7 @@
  */
 
 #include <Kernel/FileSystem/VirtualFileSystem.h>
+#include <Kernel/Memory/MemoryManager.h>
 #include <Kernel/Process.h>
 #include <Kernel/Time/TimeManagement.h>
 
@@ -22,7 +23,12 @@ ErrorOr<FlatPtr> Process::sys$sysconf(int name)
     case _SC_OPEN_MAX:
         return OpenFileDescriptions::max_open();
     case _SC_PAGESIZE:
+    case _SC_PAGE_SIZE:
         return PAGE_SIZE;
+    case _SC_PHYS_PAGES:
+        return MM.get_system_memory_info().user_physical_pages;
+    case _SC_AVPHYS_PAGES:
+        return MM.get_system_memory_info().user_physical_pages_uncommitted;
     case _SC_HOST_NAME_MAX:
         return HOST_NAME_MAX;
     case _SC_TTY_NAME_MAX:

@@ -67,7 +67,8 @@ Time kgettimeofday();
     __ENUMERATE_PLEDGE_PROMISE(setkeymap) \
     __ENUMERATE_PLEDGE_PROMISE(prot_exec) \
     __ENUMERATE_PLEDGE_PROMISE(map_fixed) \
-    __ENUMERATE_PLEDGE_PROMISE(getkeymap)
+    __ENUMERATE_PLEDGE_PROMISE(getkeymap) \
+    __ENUMERATE_PLEDGE_PROMISE(jit)
 
 enum class Pledge : u32 {
 #define __ENUMERATE_PLEDGE_PROMISE(x) x,
@@ -557,6 +558,8 @@ private:
     ErrorOr<void> remap_range_as_stack(FlatPtr address, size_t size);
 
     ErrorOr<FlatPtr> read_impl(int fd, Userspace<u8*> buffer, size_t size);
+
+    ErrorOr<void> validate_mmap_prot(int prot, bool map_stack, bool map_anonymous, Memory::Region const* region = nullptr);
 
 public:
     NonnullRefPtr<ProcessProcFSTraits> procfs_traits() const { return *m_procfs_traits; }

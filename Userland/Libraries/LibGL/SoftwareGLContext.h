@@ -154,6 +154,8 @@ public:
     virtual void gl_color_material(GLenum face, GLenum mode) override;
     virtual void gl_get_light(GLenum light, GLenum pname, void* params, GLenum type) override;
     virtual void gl_get_material(GLenum face, GLenum pname, void* params, GLenum type) override;
+
+    virtual void activate() override { }
     virtual void present() override;
 
 private:

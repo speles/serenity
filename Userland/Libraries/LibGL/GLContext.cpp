@@ -6,6 +6,7 @@
  */
 
 #include "GLContext.h"
+#include "OSMesaGLContext.h"
 #include "SoftwareGLContext.h"
 #include <AK/Debug.h>
 #include <LibGfx/Bitmap.h>
@@ -23,13 +24,27 @@ GLContext::~GLContext()
 
 NonnullOwnPtr<GLContext> create_context(Gfx::Bitmap& bitmap)
 {
-    auto context = make<SoftwareGLContext>(bitmap);
+    OwnPtr<GLContext> context;
+
+    StringView gl_backend_choice(getenv("SERENITY_GL_BACKEND"));
+    if (gl_backend_choice.is_null() || gl_backend_choice.equals_ignoring_case("software")) {
+        dbgln_if(GL_DEBUG, "GL::create_context() will use SoftwareGLContext");
+
+        context = make<SoftwareGLContext>(bitmap);
+    } else if (gl_backend_choice.equals_ignoring_case("osmesa")) {
+        dbgln_if(GL_DEBUG, "GL::create_context() will use OSMesaGLContext");
+
+        context = make<OSMesaGLContext>(bitmap);
+    } else {
+        VERIFY_NOT_REACHED();
+    }
+
     dbgln_if(GL_DEBUG, "GL::create_context({}) -> {:p}", bitmap.size(), context.ptr());
 
     if (!g_gl_context)
         make_context_current(context);
 
-    return context;
+    return context.release_nonnull();
 }
 
 void make_context_current(GLContext* context)
@@ -39,6 +54,9 @@ void make_context_current(GLContext* context)
 
     dbgln_if(GL_DEBUG, "GL::make_context_current({:p})", context);
     g_gl_context = context;
+
+    if (context)
+        context->activate();
 }
 
 void present_context(GLContext* context)

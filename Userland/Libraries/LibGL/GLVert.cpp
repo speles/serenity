@@ -205,6 +205,11 @@ void glMultiTexCoord2f(GLenum target, GLfloat s, GLfloat t)
     g_gl_context->gl_multi_tex_coord(target, s, t, 0.0f, 1.0f);
 }
 
+void glMultiTexCoord4f(GLenum target, GLfloat s, GLfloat t, GLfloat r, GLfloat q)
+{
+    g_gl_context->gl_multi_tex_coord(target, s, t, r, q);
+}
+
 void glNormal3f(GLfloat nx, GLfloat ny, GLfloat nz)
 {
     g_gl_context->gl_normal(nx, ny, nz);
@@ -218,6 +223,11 @@ void glNormal3fv(GLfloat const* v)
 void glNormalPointer(GLenum type, GLsizei stride, void const* pointer)
 {
     g_gl_context->gl_normal_pointer(type, stride, pointer);
+}
+
+void glRectd(GLdouble x1, GLdouble y1, GLdouble x2, GLdouble y2)
+{
+    g_gl_context->gl_rect(x1, y1, x2, y2);
 }
 
 void glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2)

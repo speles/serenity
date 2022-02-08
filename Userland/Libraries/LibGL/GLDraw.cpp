@@ -35,3 +35,8 @@ void glRasterPos2i(GLint x, GLint y)
 {
     g_gl_context->gl_raster_pos(static_cast<float>(x), static_cast<float>(y), 0.0f, 1.0f);
 }
+
+void glRasterPos4f(GLfloat x, GLfloat y, GLfloat z, GLfloat w)
+{
+    g_gl_context->gl_raster_pos(x, y, z, w);
+}
